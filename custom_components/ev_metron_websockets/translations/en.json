@@ -1,7 +1,8 @@
 {
     "config": {
         "abort": {
-            "already_configured": "Device is already configured"
+            "already_configured": "Device is already configured",
+            "reconfigure_successful": "Re-configuration was successful"
         },
         "error": {
             "cannot_connect": "Failed to connect",
@@ -15,6 +16,14 @@
                     "friendly_name": "Friendly name",
                     "port": "Port",
                     "api_token": "API token"
+                }
+            },
+            "reconfigure": {
+                "title": "Change charger host/port",
+                "description": "Update the hostname or IP address of your charger. Existing entities, automations and dashboards are preserved.",
+                "data": {
+                    "host": "Host",
+                    "port": "Port"
                 }
             }
         }
