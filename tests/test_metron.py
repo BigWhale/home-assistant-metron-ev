@@ -75,11 +75,16 @@ class TestAssignVariables:
         assert result["Status"] == 3
 
     def test_short_message_no_exception(self):
-        """Older firmware sending fewer fields must not raise."""
+        """Older firmware sending fewer fields must not raise; missing fields default."""
         result = assign_variables([1, 5, 3])
         assert result["Status"] == 1
         assert result["L1_current_station"] == 5
-        assert "Lifetime_energy" not in result  # field absent, not present as None
+        # Missing fields default to 0/"" like assign_variables_json does, rather
+        # than being left out of the dict — callers doing int(hub.xxx) on a
+        # missing field would otherwise crash on int(None).
+        assert result["Lifetime_energy"] == 0
+        assert result["Local_network_IP_string"] == ""
+        assert len(result) == 45
 
     def test_long_message_no_exception(self):
         """Newer firmware with extra fields must not raise; extras are ignored."""
@@ -155,6 +160,18 @@ class TestAssignVariablesJson:
         assert result["Previous_charge_energy"] == 4200
         assert result["Solar_energy"] == 45000
         assert result["House_energy"] == 87000
+
+    def test_field_names_match_legacy_parser(self):
+        """The JSON and legacy parsers must use identical names for the same field.
+
+        These are our own internal labels (the firmware only ever sends
+        single/double-letter keys), so any mismatch here is our own bug.
+        """
+        json_result = assign_variables_json(FULL_JSON_OBJ)
+        legacy_result = assign_variables([0] * 45)
+        for shared_field in ("PWMRegister_ESP32_reply_Amps", "PWMRegister_ESP32_slider_Amps", "number_of_stations"):
+            assert shared_field in json_result
+            assert shared_field in legacy_result
 
 
 # ---------------------------------------------------------------------------

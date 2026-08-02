@@ -35,8 +35,8 @@ class ChargeDelayTimer(MetronEVBaseEntity, NumberEntity):
     def __init__(self, hub: MetronEVHub) -> None:
         """Initialize the number entity."""
         super().__init__(hub)
-        self._attr_unique_id = f"{hub._name}_set_charge_delay"
-        self._attr_name = f"{hub._name} charge delay"
+        self._attr_unique_id = f"{hub.name}_set_charge_delay"
+        self._attr_name = f"{hub.name} charge delay"
         self._attr_native_min_value = 0
         self._attr_native_max_value = 720
         self._attr_native_step = 5

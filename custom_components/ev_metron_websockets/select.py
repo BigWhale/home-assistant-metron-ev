@@ -33,8 +33,8 @@ class DynamicCurrentLimit(MetronEVBaseEntity, SelectEntity):
     def __init__(self, hub: MetronEVHub) -> None:
         """Initialize the select entity."""
         super().__init__(hub)
-        self._attr_unique_id = f"{hub._name}_set_current_limit"
-        self._attr_name = f"{hub._name} current limit"
+        self._attr_unique_id = f"{hub.name}_set_current_limit"
+        self._attr_name = f"{hub.name} current limit"
         self._attr_options = CURRENT_OPTIONS
         self._attr_icon = "mdi:current-ac"
 

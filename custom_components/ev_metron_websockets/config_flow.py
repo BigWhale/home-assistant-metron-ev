@@ -52,7 +52,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     )
 
     if not await metron_ev_hub.test_endpoint():
-        raise InvalidAuth
+        raise CannotConnect
 
     # Return info that you want to store in the config entry.
     return {"title": data[CONF_FRIENDLY_NAME]}
@@ -73,8 +73,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 info = await validate_input(self.hass, user_input)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
@@ -104,8 +102,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 await validate_input(self.hass, new_data)
             except CannotConnect:
-                errors["base"] = "cannot_connect"
-            except InvalidAuth:
                 errors["base"] = "cannot_connect"
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception")
@@ -151,7 +147,3 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class CannotConnect(HomeAssistantError):
     """Error to indicate we cannot connect."""
-
-
-class InvalidAuth(HomeAssistantError):
-    """Error to indicate there is invalid auth."""

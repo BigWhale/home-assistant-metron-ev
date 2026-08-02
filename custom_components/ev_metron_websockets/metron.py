@@ -6,6 +6,10 @@ import re
 
 _LOGGER = logging.getLogger(__name__)
 
+# Legacy fields that hold text rather than a number; default to "" when missing,
+# every other field defaults to 0 (mirrors assign_variables_json's _n()/_s()).
+_LEGACY_STRING_FIELDS = {"Local_network_IP_string"}
+
 
 def parse_string(input_string):
     """Break up the legacy alphabet-delimited string."""
@@ -20,7 +24,13 @@ def parse_string(input_string):
 
 
 def assign_variables(values):
-    """Assign values to named variables (legacy string format)."""
+    """Assign values to named variables (legacy string format).
+
+    Fields beyond the end of ``values`` default to 0 (or "" for text fields)
+    rather than being left out of the dict, matching assign_variables_json's
+    handling of missing keys — a truncated message from older/newer firmware
+    must not leave callers doing int(None) on a hub attribute.
+    """
     var_names = [
         'Status', 'L1_current_station', 'L2_current_station', 'L3_current_station',
         'L1_current_building', 'L2_current_building', 'L3_current_building',
@@ -36,7 +46,6 @@ def assign_variables(values):
         'Local_network_IP_string', 'ESP32_timer_delay', 'HC12_enable', 'number_of_stations',
         'HC12_Channel', 'HC12_Signal_Present',
     ]
-    parsed_variables = dict(zip(var_names, values))
     n = len(values)
     expected = len(var_names)
     if n != expected:
@@ -44,6 +53,13 @@ def assign_variables(values):
             "Legacy message has %d fields, expected %d — firmware version mismatch?",
             n, expected,
         )
+
+    parsed_variables = {}
+    for index, name in enumerate(var_names):
+        if index < n:
+            parsed_variables[name] = values[index]
+        else:
+            parsed_variables[name] = "" if name in _LEGACY_STRING_FIELDS else 0
     return parsed_variables
 
 
@@ -77,7 +93,7 @@ def assign_variables_json(obj):
         "Dynamic_charging_current_limit": _n('o'),
         "Solar_charging_enable": _n('p'),
         "RFID_enable": _n('q'),
-        "Pwmregister_ESP32_reply_Amps": _n('r'),
+        "PWMRegister_ESP32_reply_Amps": _n('r'),
         "Solar_charging_enable_ESP32_reply": _n('s'),
         "TCA0_cmp2": _n('t'),
         "Dynamic_Enable": _n('u'),
@@ -88,7 +104,7 @@ def assign_variables_json(obj):
         "Previous_charge_energy": _n('E'),
         "Since_last_reset_energy": _n('F'),
         "Lifetime_energy": _n('G'),
-        "Pwmregister_ESP32_slider_Amps": _n('H'),
+        "PWMRegister_ESP32_slider_Amps": _n('H'),
         "WiFi_to_network_enable": _n('I'),
         "Total_house_power": _n('J'),
         "House_energy": _n('K'),
@@ -102,7 +118,7 @@ def assign_variables_json(obj):
         "Local_network_IP_string": _s('S'),
         "ESP32_timer_delay": _n('T'),
         "HC12_enable": _n('U'),
-        "Stevilo_postaj": _n('V'),
+        "number_of_stations": _n('V'),
         "HC12_Channel": _n('W'),
         "HC12_Signal_Present": _n('X'),
         "ID_station": _s('Y'),
@@ -118,7 +134,7 @@ def assign_variables_json(obj):
         "Front_button": _n('AI'),
         "Metron_Charge_Control_Version": _s('AJ'),
         "OCPP_module_code_version": _s('AK'),
-        "temprature_sens_read": _n('AL'),
+        "temperature_sens_read": _n('AL'),
         "RFID_energy": _n('AM'),
         "MCU_booting_code": _n('AN'),
         "temperature_sens_read_OCPP": _n('AO'),
@@ -134,7 +150,7 @@ def assign_variables_json(obj):
         "MCU_booting_code_ISO": _n('AZ'),
         "ISO_EVCCID_AutoCharge_prefix_OCPP": _s('BA'),
         "ISO_AutoCharge_enable": _n('BB'),
-        "kWh_limit_sider": _n('BC'),
+        "kWh_limit_slider": _n('BC'),
         "P_grid_limit": _n('BD'),
         "Grid_system": _n('BE'),
     }
