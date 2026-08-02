@@ -59,14 +59,37 @@ class MetronEVHub:
         self._HC12_Signal_Present = 0
         self._TCA0_cmp2 = 0
         self._message_format = "unknown"
+        self._metron_charge_control_version = None
+        self._temperature_sens_read = None
+        self._solar_phases = 0
+        self._house_phases = 0
+        self._car_phases = 0
+        self._wifi_to_network_enable = 0
+        self._wifi_to_network_state = 0
+        self._since_last_reset_energy = 0
+        self._id_station = None
+        self._number_of_stations = 0
+        self._charging_cable_max_current = 0
+        self._vreg1_set_charging_current = 0
+        self._vreg2_set_charging_current = 0
+        self._station_max_charging_current = 0
+        self._front_button = None
+        self._dynamic_enable = 0
+        self._p_grid_limit = None
+        self._grid_system = None
+        self._kwh_limit_slider = None
 
     async def test_endpoint(self) -> bool:
-        """Test if we can subscribe to the websocket."""
-        success = False
-        async with websockets.connect(self._uri) as websocket:
-            if websocket.state is State.OPEN:
-              success = True
-        return success
+        """Test if we can subscribe to the websocket.
+
+        Returns False (rather than raising) on any connection failure so the
+        config flow can show "cannot connect" instead of an unhandled exception.
+        """
+        try:
+            async with websockets.connect(self._uri) as websocket:
+                return websocket.state is State.OPEN
+        except (OSError, websockets.WebSocketException, TimeoutError):
+            return False
 
     async def update(self) -> None:
         """Background task to loop websocket updates."""
@@ -104,6 +127,25 @@ class MetronEVHub:
                         self._ESP32_timer_delay = latest_message.get("ESP32_timer_delay")
                         self._HC12_Signal_Present = latest_message.get("HC12_Signal_Present")
                         self._TCA0_cmp2 = latest_message.get("TCA0_cmp2")
+                        self._metron_charge_control_version = latest_message.get("Metron_Charge_Control_Version")
+                        self._temperature_sens_read = latest_message.get("temperature_sens_read")
+                        self._solar_phases = latest_message.get("Solar_phases")
+                        self._house_phases = latest_message.get("House_phases")
+                        self._car_phases = latest_message.get("Car_phases")
+                        self._wifi_to_network_enable = latest_message.get("WiFi_to_network_enable")
+                        self._wifi_to_network_state = latest_message.get("WiFi_to_network_state")
+                        self._since_last_reset_energy = latest_message.get("Since_last_reset_energy")
+                        self._id_station = latest_message.get("ID_station")
+                        self._number_of_stations = latest_message.get("number_of_stations")
+                        self._charging_cable_max_current = latest_message.get("Charging_cable_max_current")
+                        self._vreg1_set_charging_current = latest_message.get("Vreg1_set_charging_current")
+                        self._vreg2_set_charging_current = latest_message.get("Vreg2_set_charging_current")
+                        self._station_max_charging_current = latest_message.get("Station_max_charging_current")
+                        self._front_button = latest_message.get("Front_button")
+                        self._dynamic_enable = latest_message.get("Dynamic_Enable")
+                        self._p_grid_limit = latest_message.get("P_grid_limit")
+                        self._grid_system = latest_message.get("Grid_system")
+                        self._kwh_limit_slider = latest_message.get("kWh_limit_slider")
                         await self.publish_updates()
                 # Clean close: server ended the stream normally
                 _LOGGER.debug("WebSocket closed cleanly, reconnecting in 5 s")
@@ -117,9 +159,19 @@ class MetronEVHub:
                 await asyncio.sleep(5)
 
     @property
-    def metron_ev_name(self) -> str:
-        """Return status of station."""
+    def name(self) -> str:
+        """Return the configured friendly name."""
         return self._name
+
+    @property
+    def host(self) -> str:
+        """Return the configured host."""
+        return self._host
+
+    @property
+    def id(self) -> str:
+        """Return the device identifier (lowercased host)."""
+        return self._id
 
     @property
     def TCA0_cmp2(self) -> str:
@@ -277,14 +329,117 @@ class MetronEVHub:
         self._callbacks.discard(callback)
 
     async def publish_updates(self) -> None:
-        """Call all callbacks on update."""
+        """Call all callbacks on update.
+
+        A single entity failing to compute its state (e.g. a malformed message
+        leaving one field un-coercible) must not stop the other entities from
+        updating, or tear down the websocket connection the update loop runs in.
+        """
         for callback in self._callbacks:
-            callback()
+            try:
+                callback()
+            except Exception:
+                _LOGGER.exception("Error notifying entity of update")
 
     @property
     def message_format(self) -> str:
         """Return the last detected websocket message format."""
         return self._message_format
+
+    @property
+    def metron_charge_control_version(self):
+        """Return the firmware version string. None on legacy (pre-JSON) firmware."""
+        return self._metron_charge_control_version
+
+    @property
+    def temperature_sens_read(self):
+        """Return the raw internal temperature sensor reading. Scale/unit not confirmed."""
+        return self._temperature_sens_read
+
+    @property
+    def solar_phases(self):
+        """Return the configured number of solar phases."""
+        return self._solar_phases
+
+    @property
+    def house_phases(self):
+        """Return the configured number of house phases."""
+        return self._house_phases
+
+    @property
+    def car_phases(self):
+        """Return the configured number of car phases."""
+        return self._car_phases
+
+    @property
+    def wifi_to_network_enable(self):
+        """Return whether WiFi-to-network is enabled."""
+        return self._wifi_to_network_enable
+
+    @property
+    def wifi_to_network_state(self):
+        """Return whether WiFi-to-network is currently connected."""
+        return self._wifi_to_network_state
+
+    @property
+    def since_last_reset_energy(self):
+        """Return the energy counter since its last reset."""
+        return self._since_last_reset_energy
+
+    @property
+    def id_station(self):
+        """Return the station identifier. None on legacy (pre-JSON) firmware."""
+        return self._id_station
+
+    @property
+    def number_of_stations(self):
+        """Return the number of stations reported by the charger."""
+        return self._number_of_stations
+
+    @property
+    def charging_cable_max_current(self):
+        """Return the charging cable's maximum current rating, in amps."""
+        return self._charging_cable_max_current
+
+    @property
+    def vreg1_set_charging_current(self):
+        """Return the Vreg1 set charging current, in amps."""
+        return self._vreg1_set_charging_current
+
+    @property
+    def vreg2_set_charging_current(self):
+        """Return the Vreg2 set charging current, in amps."""
+        return self._vreg2_set_charging_current
+
+    @property
+    def station_max_charging_current(self):
+        """Return the station's maximum charging current, in amps."""
+        return self._station_max_charging_current
+
+    @property
+    def front_button(self):
+        """Return the front button state. None on legacy (pre-JSON) firmware."""
+        return self._front_button
+
+    @property
+    def dynamic_enable(self):
+        """Return the dynamic charging enable flag (not a plain boolean; meaning unconfirmed)."""
+        return self._dynamic_enable
+
+    @property
+    def p_grid_limit(self):
+        """Return the grid power limit setting. None on legacy (pre-JSON) firmware."""
+        return self._p_grid_limit
+
+    @property
+    def grid_system(self):
+        """Return the grid system code. None on legacy (pre-JSON) firmware."""
+        return self._grid_system
+
+    @property
+    def kwh_limit_slider(self):
+        """Return the kWh limit slider setting. None on legacy (pre-JSON) firmware."""
+        return self._kwh_limit_slider
 
     @property
     def available(self) -> bool:

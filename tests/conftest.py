@@ -21,6 +21,8 @@ for _mod in [
     "homeassistant.helpers",
     "homeassistant.helpers.entity",
     "homeassistant.helpers.entity_platform",
+    "homeassistant.helpers.entity_registry",
+    "homeassistant.helpers.issue_registry",
     "homeassistant.components",
     "homeassistant.components.sensor",
     "homeassistant.components.binary_sensor",
@@ -46,7 +48,28 @@ class SensorDeviceClass(str, enum.Enum):
     DURATION = "duration"
 
 
+class SensorEntity:
+    """Minimal stub mirroring the real SensorEntity's _attr_* fallback properties."""
+
+    _attr_state_class = None
+    _attr_native_unit_of_measurement = None
+    _attr_device_class = None
+
+    @property
+    def state_class(self):
+        return self._attr_state_class
+
+    @property
+    def native_unit_of_measurement(self):
+        return self._attr_native_unit_of_measurement
+
+    @property
+    def device_class(self):
+        return self._attr_device_class
+
+
 _sensor = sys.modules["homeassistant.components.sensor"]
+_sensor.SensorEntity = SensorEntity
 _sensor.SensorStateClass = SensorStateClass
 _sensor.SensorDeviceClass = SensorDeviceClass
 
@@ -54,9 +77,28 @@ _sensor.SensorDeviceClass = SensorDeviceClass
 
 class BinarySensorDeviceClass(str, enum.Enum):
     PLUG = "plug"
+    BATTERY_CHARGING = "battery_charging"
+    CONNECTIVITY = "connectivity"
 
 
-sys.modules["homeassistant.components.binary_sensor"].BinarySensorDeviceClass = BinarySensorDeviceClass
+class BinarySensorEntity:
+    """Minimal stub mirroring the real BinarySensorEntity's _attr_* fallback properties."""
+
+    _attr_is_on = None
+    _attr_device_class = None
+
+    @property
+    def is_on(self):
+        return self._attr_is_on
+
+    @property
+    def device_class(self):
+        return self._attr_device_class
+
+
+_binary_sensor = sys.modules["homeassistant.components.binary_sensor"]
+_binary_sensor.BinarySensorDeviceClass = BinarySensorDeviceClass
+_binary_sensor.BinarySensorEntity = BinarySensorEntity
 
 # --- homeassistant.const ---
 
@@ -66,6 +108,7 @@ class EntityCategory(str, enum.Enum):
 
 class Platform(str, enum.Enum):
     SENSOR = "sensor"
+    BINARY_SENSOR = "binary_sensor"
     BUTTON = "button"
     NUMBER = "number"
     SELECT = "select"
@@ -106,6 +149,51 @@ sys.modules["homeassistant.helpers.entity"].DeviceInfo = dict
 # --- homeassistant.helpers.entity_platform ---
 
 sys.modules["homeassistant.helpers.entity_platform"].AddEntitiesCallback = object
+
+# --- homeassistant.helpers.entity_registry ---
+
+
+class FakeEntityRegistry:
+    """In-memory stand-in for HA's entity registry, for tests to pre-populate/inspect."""
+
+    def __init__(self):
+        """Initialize with an empty registry."""
+        self._entity_ids: dict[tuple[str, str, str], str] = {}
+        self.removed: list[str] = []
+
+    def add(self, domain: str, platform: str, unique_id: str, entity_id: str) -> None:
+        self._entity_ids[(domain, platform, unique_id)] = entity_id
+
+    def async_get_entity_id(self, domain: str, platform: str, unique_id: str) -> str | None:
+        return self._entity_ids.get((domain, platform, unique_id))
+
+    def async_remove(self, entity_id: str) -> None:
+        self.removed.append(entity_id)
+        self._entity_ids = {k: v for k, v in self._entity_ids.items() if v != entity_id}
+
+
+def _entity_registry_async_get(hass):
+    return hass._fake_entity_registry
+
+
+_entity_registry = sys.modules["homeassistant.helpers.entity_registry"]
+_entity_registry.async_get = _entity_registry_async_get
+
+# --- homeassistant.helpers.issue_registry ---
+
+
+class IssueSeverity(str, enum.Enum):
+    WARNING = "warning"
+    ERROR = "error"
+
+
+def _issue_registry_async_create_issue(hass, domain, issue_id, **kwargs) -> None:
+    """No-op by default; tests monkeypatch this to capture calls."""
+
+
+_issue_registry = sys.modules["homeassistant.helpers.issue_registry"]
+_issue_registry.IssueSeverity = IssueSeverity
+_issue_registry.async_create_issue = _issue_registry_async_create_issue
 
 # --- websockets ---
 

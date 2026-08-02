@@ -19,9 +19,9 @@ class MetronEVBaseEntity(Entity):
     def device_info(self) -> DeviceInfo:
         """Return information to link this entity with the correct device."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self._hub._id)},
-            model=f"{self._hub._name} charger at {self._hub._host}",
-            name=f"{self._hub._name} Charger",
+            identifiers={(DOMAIN, self._hub.id)},
+            model=f"{self._hub.name} charger at {self._hub.host}",
+            name=f"{self._hub.name} Charger",
             manufacturer="Metron EV",
         )
 

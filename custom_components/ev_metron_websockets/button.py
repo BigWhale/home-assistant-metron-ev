@@ -90,7 +90,7 @@ class MetronButton(MetronEVBaseEntity, ButtonEntity):
     ) -> None:
         """Initialize the button."""
         super().__init__(hub)
-        self._attr_unique_id = f"{hub._name}_{description.key}"
+        self._attr_unique_id = f"{hub.name}_{description.key}"
         self.entity_description = description
 
     async def async_press(self) -> None:

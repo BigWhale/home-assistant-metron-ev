@@ -6,7 +6,6 @@
         },
         "error": {
             "cannot_connect": "Failed to connect",
-            "invalid_auth": "Invalid authentication",
             "unknown": "Unexpected error"
         },
         "step": {
@@ -26,6 +25,12 @@
                     "port": "Port"
                 }
             }
+        }
+    },
+    "issues": {
+        "car_status_entities_moved": {
+            "title": "Car connected/charging entities moved to binary_sensor",
+            "description": "The car connected and charging entities moved from the sensor domain to binary_sensor (they were booleans incorrectly exposed as sensors). The old entities were removed; update any automations or dashboards that reference them:\n\n{changes}"
         }
     }
 }
